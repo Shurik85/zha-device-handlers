@@ -1,6 +1,6 @@
 """Xiaomi aqara single key wall switch devices."""
+import logging
 
-from zigpy import types as t
 from zigpy.profiles import zha
 from zigpy.zcl.clusters.general import (
     AnalogInput,
@@ -16,29 +16,7 @@ from zigpy.zcl.clusters.general import (
     Time,
 )
 
-from zhaquirks import Bus, EventableCluster
-from zhaquirks.const import (
-    ARGS,
-    ATTRIBUTE_ID,
-    ATTRIBUTE_NAME,
-    BUTTON_1,
-    BUTTON_2,
-    BUTTON_3,
-    CLUSTER_ID,
-    COMMAND,
-    COMMAND_ATTRIBUTE_UPDATED,
-    DEVICE_TYPE,
-    DOUBLE_PRESS,
-    ENDPOINT_ID,
-    ENDPOINTS,
-    INPUT_CLUSTERS,
-    MODELS_INFO,
-    OUTPUT_CLUSTERS,
-    PROFILE_ID,
-    SHORT_PRESS,
-    SKIP_CONFIGURATION,
-    VALUE,
-)
+from zhaquirks import Bus
 from zhaquirks.xiaomi import (
     LUMI,
     AnalogInputCluster,
@@ -48,28 +26,43 @@ from zhaquirks.xiaomi import (
     XiaomiPowerConfiguration,
 )
 
+from . import BasicClusterDecoupled, WallSwitchMultistateInputCluster
+from .. import (
+    LUMI,
+    AnalogInputCluster,
+    OnOffCluster,
+    XiaomiCustomDevice,
+    XiaomiPowerConfiguration,
+)
+from ...const import (
+    ARGS,
+    ATTRIBUTE_ID,
+    ATTRIBUTE_NAME,
+    BUTTON,
+    BUTTON_2,
+    CLUSTER_ID,
+    COMMAND,
+    COMMAND_ATTRIBUTE_UPDATED,
+    COMMAND_CLICK,
+    COMMAND_DOUBLE,
+    DEVICE_TYPE,
+    ENDPOINT_ID,
+    ENDPOINTS,
+    INPUT_CLUSTERS,
+    MODELS_INFO,
+    OUTPUT_CLUSTERS,
+    PROFILE_ID,
+    SKIP_CONFIGURATION,
+    VALUE,
+)
+
 ATTRIBUTE_PRESENT_VALUE = "present_value"
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class CtrlLn(XiaomiCustomDevice):
     """Aqara double key switch device."""
-
-    class BasicClusterDecoupled(BasicCluster):
-        """Adds attributes for decoupled mode."""
-
-        # Known Options for 'decoupled_mode_<button>':
-        # * 254 (decoupled)
-        # * 18 (relay controlled)
-        attributes = BasicCluster.attributes.copy()
-        attributes.update(
-            {
-                0xFF22: ("decoupled_mode_left", t.uint8_t, True),
-                0xFF23: ("decoupled_mode_right", t.uint8_t, True),
-            }
-        )
-
-    class WallSwitchMultistateInputCluster(EventableCluster, MultistateInput):
-        """WallSwitchMultistateInputCluster: fire events corresponding to press type."""
 
     def __init__(self, *args, **kwargs):
         """Init."""
@@ -169,7 +162,6 @@ class CtrlLn(XiaomiCustomDevice):
                 DEVICE_TYPE: zha.DeviceType.ON_OFF_SWITCH,
                 INPUT_CLUSTERS: [
                     WallSwitchMultistateInputCluster,
-                    BinaryOutput.cluster_id,
                 ],
                 OUTPUT_CLUSTERS: [],
             },
@@ -177,15 +169,6 @@ class CtrlLn(XiaomiCustomDevice):
                 DEVICE_TYPE: zha.DeviceType.ON_OFF_SWITCH,
                 INPUT_CLUSTERS: [
                     WallSwitchMultistateInputCluster,
-                    BinaryOutput.cluster_id,
-                ],
-                OUTPUT_CLUSTERS: [],
-            },
-            7: {
-                DEVICE_TYPE: zha.DeviceType.ON_OFF_SWITCH,
-                INPUT_CLUSTERS: [
-                    WallSwitchMultistateInputCluster,
-                    BinaryOutput.cluster_id,
                 ],
                 OUTPUT_CLUSTERS: [],
             },
@@ -193,38 +176,26 @@ class CtrlLn(XiaomiCustomDevice):
     }
 
     device_automation_triggers = {
-        (SHORT_PRESS, BUTTON_1): {
+        (COMMAND_CLICK, BUTTON): {
             ENDPOINT_ID: 5,
             CLUSTER_ID: 18,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 1},
         },
-        (DOUBLE_PRESS, BUTTON_1): {
+        (COMMAND_DOUBLE + COMMAND_CLICK, BUTTON): {
             ENDPOINT_ID: 5,
             CLUSTER_ID: 18,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 2},
         },
-        (SHORT_PRESS, BUTTON_2): {
+        (COMMAND_CLICK, BUTTON_2): {
             ENDPOINT_ID: 6,
             CLUSTER_ID: 18,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 1},
         },
-        (DOUBLE_PRESS, BUTTON_2): {
+        (COMMAND_DOUBLE + COMMAND_CLICK, BUTTON_2): {
             ENDPOINT_ID: 6,
-            CLUSTER_ID: 18,
-            COMMAND: COMMAND_ATTRIBUTE_UPDATED,
-            ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 2},
-        },
-        (SHORT_PRESS, BUTTON_3): {
-            ENDPOINT_ID: 7,
-            CLUSTER_ID: 18,
-            COMMAND: COMMAND_ATTRIBUTE_UPDATED,
-            ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 1},
-        },
-        (DOUBLE_PRESS, BUTTON_3): {
-            ENDPOINT_ID: 7,
             CLUSTER_ID: 18,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 85, ATTRIBUTE_NAME: ATTRIBUTE_PRESENT_VALUE, VALUE: 2},
