@@ -27,18 +27,20 @@ from zhaquirks.const import (
     COMMAND,
     COMMAND_ATTRIBUTE_UPDATED,
     COMMAND_DOUBLE,
-    COMMAND_HOLD,
-    COMMAND_RELEASE,
+    COMMAND_CLICK,
     DEVICE_TYPE,
     ENDPOINT_ID,
     ENDPOINTS,
     INPUT_CLUSTERS,
+    LEFT,
     MODELS_INFO,
     OUTPUT_CLUSTERS,
     PROFILE_ID,
+    RIGHT,
     SKIP_CONFIGURATION,
     VALUE,
 )
+
 from zhaquirks.xiaomi import (
     LUMI,
     BasicCluster,
@@ -48,10 +50,7 @@ from zhaquirks.xiaomi import (
 )
 
 ATTRIBUTE_ON_OFF = "on_off"
-DOUBLE = "double"
-HOLD = "long press"
 PRESS_TYPES = {0: "long press", 1: "single", 2: "double"}
-SINGLE = "single"
 STATUS_TYPE_ATTR = 0x0055  # decimal = 85
 XIAOMI_CLUSTER_ID = 0xFFFF
 XIAOMI_DEVICE_TYPE = 0x5F01
@@ -73,14 +72,12 @@ class CtrlNeutral(XiaomiCustomDevice):
 
         # Known Options for 'decoupled_mode_<button>':
         # * 254 (decoupled)
-        # * 18 (relay controlled)
-        attributes = BasicCluster.attributes.copy()
-        attributes.update(
-            {
-                0xFF22: ("decoupled_mode_left", t.uint8_t, True),
-                0xFF23: ("decoupled_mode_right", t.uint8_t, True),
-            }
-        )
+        # * 18 (controls left relay)
+        # * 34 (controls right relay)
+        manufacturer_attributes = {
+            0xFF22: ("decoupled_mode_left", t.uint8_t),
+            0xFF23: ("decoupled_mode_right", t.uint8_t),
+        }
 
     class WallSwitchOnOffCluster(EventableCluster, OnOff):
         """WallSwitchOnOffCluster: fire events corresponding to press type."""
@@ -226,24 +223,38 @@ class CtrlNeutral(XiaomiCustomDevice):
                 ],
                 OUTPUT_CLUSTERS: [],
             },
+            5: {
+                DEVICE_TYPE: zha.DeviceType.ON_OFF_SWITCH,
+                INPUT_CLUSTERS: [
+                    MultistateInput.cluster_id,
+                    WallSwitchOnOffCluster,
+                ],
+                OUTPUT_CLUSTERS: [],
+            },
         },
     }
 
     device_automation_triggers = {
-        (COMMAND_HOLD, BUTTON): {
-            ENDPOINT_ID: 4,
-            CLUSTER_ID: 6,
-            COMMAND: COMMAND_ATTRIBUTE_UPDATED,
-            ARGS: {ATTRIBUTE_ID: 0, ATTRIBUTE_NAME: ATTRIBUTE_ON_OFF, VALUE: 0},
-        },
-        (COMMAND_RELEASE, BUTTON): {
+        (LEFT, COMMAND_CLICK): {
             ENDPOINT_ID: 4,
             CLUSTER_ID: 6,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 0, ATTRIBUTE_NAME: ATTRIBUTE_ON_OFF, VALUE: 1},
         },
-        (COMMAND_DOUBLE, BUTTON): {
+        (LEFT, COMMAND_DOUBLE): {
             ENDPOINT_ID: 4,
+            CLUSTER_ID: 6,
+            COMMAND: COMMAND_ATTRIBUTE_UPDATED,
+            ARGS: {ATTRIBUTE_ID: 0, ATTRIBUTE_NAME: ATTRIBUTE_ON_OFF, VALUE: 2},
+        },
+        (RIGHT, COMMAND_CLICK): {
+            ENDPOINT_ID: 5,
+            CLUSTER_ID: 6,
+            COMMAND: COMMAND_ATTRIBUTE_UPDATED,
+            ARGS: {ATTRIBUTE_ID: 0, ATTRIBUTE_NAME: ATTRIBUTE_ON_OFF, VALUE: 1},
+        },
+        (RIGHT, COMMAND_DOUBLE): {
+            ENDPOINT_ID: 5,
             CLUSTER_ID: 6,
             COMMAND: COMMAND_ATTRIBUTE_UPDATED,
             ARGS: {ATTRIBUTE_ID: 0, ATTRIBUTE_NAME: ATTRIBUTE_ON_OFF, VALUE: 2},
